@@ -179,6 +179,79 @@ function useTypingPlaceholder(words: string[], active: boolean) {
 }
 
 
+const LOADING_STEPS = [
+  "Fetching page HTML",
+  "Discovering linked stylesheets",
+  "Parsing color declarations",
+  "Extracting typography scale",
+  "Building DESIGN.md",
+  "Finalizing preview",
+];
+
+function ExtractionLoader() {
+  const [step, setStep] = useState(0);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    setProgress(0);
+    setStep(0);
+
+    const progressInterval = setInterval(() => {
+      setProgress((p) => {
+        if (p >= 92) return p;
+        const remaining = 92 - p;
+        const jump = Math.max(0.5, Math.min(remaining * 0.08, 8));
+        return Math.min(92, p + jump);
+      });
+    }, 280);
+
+    const stepInterval = setInterval(() => {
+      setStep((s) => (s + 1) % LOADING_STEPS.length);
+    }, 2200);
+
+    return () => {
+      clearInterval(progressInterval);
+      clearInterval(stepInterval);
+    };
+  }, []);
+
+  return (
+    <div className="mt-8 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div className="relative px-5 py-5">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+        <div className="flex items-start gap-4">
+          <span className="relative grid size-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+            <Loader2 className="size-5 animate-spin" />
+            <span className="absolute inset-0 rounded-xl bg-primary/10 blur-md" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-foreground">Extracting design system</p>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                {Math.round(progress)}%
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground transition-all duration-300">
+              {LOADING_STEPS[step]}…
+            </p>
+            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-primary to-primary/80 transition-[width] duration-300 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <div className="mt-2.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+              <span className="inline-block size-1.5 rounded-full bg-primary animate-pulse" />
+              This usually takes 5–15 seconds
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function Panel({
   title,
   children,
@@ -363,28 +436,36 @@ function Index() {
               inputMode="url"
             />
           </div>
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
             <button
               type="button"
               onClick={() => setMultiPage((v) => !v)}
               aria-pressed={multiPage}
-              className="flex min-w-0 items-center gap-3 justify-self-start rounded-full border border-border bg-secondary px-3 py-2"
+              className="flex min-w-0 items-center gap-2 justify-self-start rounded-full border border-border bg-secondary px-2.5 py-1.5"
             >
               <span
                 className={cn(
-                  "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-                  multiPage ? "bg-primary" : "bg-muted",
+                  "relative h-5 w-9 shrink-0 rounded-full border-2 border-muted-foreground/30 transition-colors",
+                  multiPage ? "bg-primary border-primary" : "bg-muted/80",
                 )}
               >
                 <span
                   className={cn(
-                    "absolute top-0.5 size-5 rounded-full bg-foreground transition-all",
-                    multiPage ? "left-[22px]" : "left-0.5",
+                    "absolute top-0.5 size-3.5 rounded-full bg-foreground shadow-md transition-all",
+                    multiPage ? "left-[18px]" : "left-0.5",
                   )}
                 />
+                <span
+                  className={cn(
+                    "absolute top-1/2 -translate-y-1/2 text-[8px] font-bold transition-opacity",
+                    multiPage ? "left-1 text-primary-foreground" : "right-1 text-muted-foreground/60",
+                  )}
+                >
+                  {multiPage ? "I" : "O"}
+                </span>
               </span>
-              <Layers className="size-3.5 shrink-0 text-primary" />
-              <span className="truncate text-xs font-medium">
+              <Layers className="size-3 shrink-0 text-primary" />
+              <span className="truncate text-[11px] font-medium">
                 Multi-page{multiPage ? " · 5" : ""}
               </span>
             </button>
@@ -437,19 +518,7 @@ function Index() {
           </p>
         )}
 
-        {mutation.isPending && (
-          <div className="mt-8 flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4">
-            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
-              <Loader2 className="size-5 animate-spin" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-medium">Writing your DESIGN.md...</p>
-              <span className="mt-2 block h-1 w-full overflow-hidden rounded-full bg-muted">
-                <span className="block h-full w-1/2 animate-pulse rounded-full bg-primary" />
-              </span>
-            </div>
-          </div>
-        )}
+        {mutation.isPending && <ExtractionLoader />}
 
         {page && (
           <div className="mt-10 space-y-5">
