@@ -44,6 +44,8 @@ import {
 import { cn } from "@/lib/utils";
 import { LandingSections } from "@/components/landing-sections";
 import { BrandLogos } from "@/components/brand-logos";
+import { ShotImage } from "@/components/shot-image";
+
 
 
 const CHANNEL_URL = "https://whatsapp.com/channel/0029Vb6ukqnHQbS4mKP0j80L";
@@ -682,14 +684,13 @@ function Index() {
                   }}
                 >
                   {pages.map((p) => (
-                    <img
+                    <ShotImage
                       key={p.url}
                       src={p.screenshot}
                       alt={`Screenshot of ${new URL(p.url).hostname}`}
-                      loading="lazy"
-                      className="w-full shrink-0 snap-center rounded-lg border border-border bg-secondary"
                     />
                   ))}
+
                 </div>
 
                 {pages.length > 1 && (
