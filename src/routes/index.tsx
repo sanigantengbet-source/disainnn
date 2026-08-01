@@ -34,8 +34,17 @@ import {
   loadAiSettings,
   type AiSettings,
 } from "@/components/api-key-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { LandingSections } from "@/components/landing-sections";
+import { BrandLogos } from "@/components/brand-logos";
+
 
 const CHANNEL_URL = "https://whatsapp.com/channel/0029Vb6ukqnHQbS4mKP0j80L";
 const LOGO_SRC = "/designsf-logo.jpg";
@@ -437,27 +446,65 @@ function Index() {
   };
 
   return (
-    <main className="min-h-screen bg-canvas">
+    <main id="top" className="min-h-screen bg-canvas">
       <div className="mx-auto w-full max-w-3xl px-4 pb-16 pt-6">
-        <header className="mb-12 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-          <div className="flex min-w-0 items-center gap-3">
+        <header className="sticky top-3 z-50 mb-12 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl glass-panel glass-motion px-3 py-2.5">
+          <a href="#top" className="flex min-w-0 items-center gap-3">
             <img
               src={LOGO_SRC}
               alt="DesignSF logo"
               className="size-9 shrink-0 rounded-xl object-cover"
             />
             <span className="truncate text-lg font-semibold tracking-tight">DesignSF</span>
-
-          </div>
+          </a>
           <div className="flex shrink-0 items-center gap-2">
             <span className="hidden items-center gap-2 rounded-full border border-border px-3 py-1.5 text-xs text-foreground sm:flex">
               <Compass className="size-3.5" /> Discover
             </span>
-            <span className="grid size-9 place-items-center rounded-full border border-border">
-              <Menu className="size-3.5" />
-            </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label="Buka menu"
+                className="grid size-9 place-items-center rounded-full border border-border transition-all duration-300 ease-out hover:bg-secondary hover:border-primary/60 data-[state=open]:rotate-90 data-[state=open]:border-primary/70 data-[state=open]:bg-primary/10 data-[state=open]:text-primary"
+              >
+                <Menu className="size-3.5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 glass-panel glass-motion border-0">
+
+                <DropdownMenuItem asChild>
+                  <a href="#top">
+                    <Compass className="size-4" /> Ekstrak website
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href="#how-it-works">
+                    <Layers className="size-4" /> Cara kerjanya
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href="#token-ai">
+                    <KeyRound className="size-4" /> Cara ambil token AI
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href="#faq">
+                    <MessageCircle className="size-4" /> FAQ
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem onSelect={() => setAiOpen(true)}>
+                  <KeyRound className="size-4" /> Pengaturan AI
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href={CHANNEL_URL} target="_blank" rel="noreferrer">
+                    <Sparkles className="size-4" /> Channel WhatsApp
+                  </a>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
+
 
         <div className="mb-8 text-center">
           <p className="mb-3 text-xs font-semibold tracking-[0.2em] text-primary uppercase">
@@ -587,6 +634,9 @@ function Index() {
             </span>
           ))}
         </div>
+
+        <BrandLogos />
+
 
         {mutation.isError && (
           <p className="mt-8 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive-foreground">
