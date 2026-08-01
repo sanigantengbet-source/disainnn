@@ -23,8 +23,17 @@ import {
   Moon,
   ChevronLeft,
   ChevronRight,
+  KeyRound,
+  Sparkles,
 } from "lucide-react";
 import { extractDesign } from "@/lib/extract.functions";
+import { generateReadme } from "@/lib/ai-readme.functions";
+import {
+  ApiKeyDialog,
+  EMPTY_SETTINGS,
+  loadAiSettings,
+  type AiSettings,
+} from "@/components/api-key-dialog";
 import { cn } from "@/lib/utils";
 import { LandingSections } from "@/components/landing-sections";
 
@@ -337,7 +346,10 @@ function Index() {
   const [url, setUrl] = useState("");
   const [multiPage, setMultiPage] = useState(false);
   const [pageIdx, setPageIdx] = useState(0);
-  const [tab, setTab] = useState<"md" | "html">("md");
+  const [tab, setTab] = useState<"md" | "html" | "readme">("md");
+  const [aiOpen, setAiOpen] = useState(false);
+  const [ai, setAi] = useState<AiSettings>(EMPTY_SETTINGS);
+  useEffect(() => setAi(loadAiSettings()), []);
   const [copied, setCopied] = useState(false);
   const typedPlaceholder = useTypingPlaceholder(TYPED_URLS, url.length === 0);
 
@@ -366,6 +378,48 @@ function Index() {
 
   const pages = (mutation.data?.pages ?? []) as Page[];
   const page = pages[pageIdx];
+
+  const makeReadme = useServerFn(generateReadme);
+  const readmeMutation = useMutation({
+    mutationFn: (input: {
+      url: string;
+      title: string;
+      description: string;
+      md: string;
+      fonts: string[];
+      radii: string[];
+      primary: { hex: string; count: number }[];
+      neutral: { hex: string; count: number }[];
+      useAi: boolean;
+      provider: AiSettings["provider"];
+      apiKey: string;
+      model: string;
+      autoFallback: boolean;
+    }) => makeReadme({ data: input }),
+  });
+  const [readmeFor, setReadmeFor] = useState<string | null>(null);
+  const readme = readmeFor === page?.url ? (readmeMutation.data?.readme ?? "") : "";
+
+  const buildReadme = () => {
+    if (!page) return;
+    setReadmeFor(page.url);
+    readmeMutation.mutate({
+      url: page.url,
+      title: page.title,
+      description: page.description,
+      md: page.md,
+      fonts: page.fonts,
+      radii: page.radii,
+      primary: page.primary,
+      neutral: page.neutral,
+      useAi: ai.enabled && !!ai.apiKey,
+      provider: ai.provider,
+      apiKey: ai.apiKey,
+      model: ai.model,
+      autoFallback: ai.autoFallback !== false,
+    });
+  };
+
 
   const shotsRef = useRef<HTMLDivElement | null>(null);
   const goShot = (i: number) => {
@@ -469,20 +523,42 @@ function Index() {
                 Multi-page{multiPage ? " · 5" : ""}
               </span>
             </button>
-            <button
-              type="submit"
-              disabled={mutation.isPending || !url.trim()}
-              className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground transition-opacity disabled:opacity-40"
-              aria-label="Extract design system"
-            >
-              {mutation.isPending ? (
-                <Loader2 className="size-5 animate-spin" />
-              ) : (
-                <ArrowRight className="size-5" />
-              )}
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAiOpen(true)}
+                aria-label="AI API key settings"
+                title={ai.enabled ? `AI on · ${ai.provider}` : "Add an AI API key (optional)"}
+                className={cn(
+                  "relative grid size-10 place-items-center rounded-xl border transition-colors",
+                  ai.enabled
+                    ? "border-primary/60 bg-primary/10 text-primary"
+                    : "border-border bg-secondary text-muted-foreground hover:border-primary/50 hover:text-foreground",
+                )}
+              >
+                <KeyRound className="size-4" />
+                {ai.enabled && (
+                  <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-card bg-primary" />
+                )}
+              </button>
+              <button
+                type="submit"
+                disabled={mutation.isPending || !url.trim()}
+                className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground transition-opacity disabled:opacity-40"
+                aria-label="Extract design system"
+              >
+                {mutation.isPending ? (
+                  <Loader2 className="size-5 animate-spin" />
+                ) : (
+                  <ArrowRight className="size-5" />
+                )}
+              </button>
+            </div>
           </div>
         </form>
+
+        <ApiKeyDialog open={aiOpen} onOpenChange={setAiOpen} settings={ai} onSave={setAi} />
+
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
           <span className="text-xs tracking-widest text-muted-foreground uppercase">Try</span>
@@ -725,6 +801,7 @@ function Index() {
                 {(
                   [
                     ["md", "DESIGN.md", FileText],
+                    ["readme", "AI DESIGN.md", Sparkles],
                     ["html", "HTML", Monitor],
                   ] as const
                 ).map(([key, label, Icon]) => (
@@ -742,25 +819,89 @@ function Index() {
                 ))}
               </div>
               <div className="p-5">
-                {tab === "md" ? (
+                {tab === "md" && (
                   <pre className="max-h-[420px] overflow-auto rounded-xl bg-secondary p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap text-foreground">
                     {page.md}
                   </pre>
-                ) : (
+                )}
+
+                {tab === "html" && (
                   <iframe
                     title="HTML preview"
                     srcDoc={page.html}
                     className="h-[420px] w-full rounded-xl border border-border bg-secondary"
                   />
                 )}
+
+                {tab === "readme" && (
+                  <div>
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={buildReadme}
+                        disabled={readmeMutation.isPending}
+                        className="flex items-center gap-2 rounded-xl bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-opacity disabled:opacity-40"
+                      >
+                        {readmeMutation.isPending ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <Sparkles className="size-3.5" />
+                        )}
+                        {readmeMutation.isPending
+                          ? "Writing DESIGN.md…"
+                          : ai.enabled
+                            ? "Generate with AI"
+                            : "Generate DESIGN.md"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAiOpen(true)}
+                        className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+                      >
+                        <KeyRound className="size-3.5" />
+                        {ai.enabled ? `AI: ${ai.provider}` : "Add API key"}
+                      </button>
+                      <span className="text-[11px] text-muted-foreground">
+                        {ai.enabled
+                          ? "Uses your own API key."
+                          : "Works without AI — template mode."}
+                      </span>
+                    </div>
+
+                    {readmeMutation.isError && (
+                      <p className="mb-3 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive-foreground">
+                        {(readmeMutation.error as Error).message}
+                      </p>
+                    )}
+
+                    {readmeMutation.data?.warning && (
+                      <p className="mb-3 rounded-xl border border-border bg-secondary px-3 py-2 text-xs text-muted-foreground">
+                        {readmeMutation.data.warning}
+                      </p>
+                    )}
+
+
+                    <pre className="max-h-[420px] overflow-auto rounded-xl bg-secondary p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap text-foreground">
+                      {readme ||
+                        "Click Generate to build a DESIGN.md that's ready to paste into your AI agent."}
+                    </pre>
+                  </div>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => copyOutput(tab === "md" ? page.md : page.html)}
-                  className="mt-3 rounded-lg border border-border px-3 py-1.5 text-xs transition-colors hover:border-primary"
+                  onClick={() =>
+                    copyOutput(tab === "md" ? page.md : tab === "html" ? page.html : readme)
+                  }
+                  disabled={tab === "readme" && !readme}
+                  className="mt-3 rounded-lg border border-border px-3 py-1.5 text-xs transition-colors hover:border-primary disabled:opacity-40"
                 >
-                  {copied ? "Copied!" : `Copy ${tab === "md" ? "DESIGN.md" : "HTML"}`}
+                  {copied
+                    ? "Copied!"
+                    : `Copy ${tab === "md" ? "DESIGN.md" : tab === "html" ? "HTML" : "AI DESIGN.md"}`}
                 </button>
               </div>
+
             </section>
           </div>
         )}
