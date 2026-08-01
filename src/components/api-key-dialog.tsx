@@ -159,7 +159,7 @@ export function ApiKeyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md rounded-2xl border-border bg-card">
+      <DialogContent className="max-w-md rounded-2xl border-0 glass-panel glass-motion">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <span className="grid size-8 place-items-center rounded-xl bg-primary/15 text-primary">
